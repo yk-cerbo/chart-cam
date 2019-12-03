@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <!-- <script src="camera_2.js"></script> -->
+    <title>Camera 1.3</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #video {
+            width: 200px;
+            object-fit: contain;
+            transform: scaleX(1);
+        }
+
+        #photo {
+            border: 1px solid green;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .camera {
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid black;
+        }
+
+        #status {
+            max-width: 85%;
+            max-height: 200px;
+        }
+
+        .output {
+            width: 75%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #switch-camera {}
+
+        #take-photo,
+        #clear-photo {
+            max-width: 200px;
+        }
+    </style>
+    <script>
+
+        function displayVideoInputs(devices) {
+            let counter = 1
+            devices.forEach(function (device) {
+                if (device.kind === "videoinput") {
+                    window['newDeviceNode' + counter] = document.createElement("button")
+                    window['newDeviceNode' + counter].innerHTML = 'newDeviceNode' + counter
+                    document.getElementById("list-devices-here")
+                        .append(device.kind + " " + device.label, window['newDeviceNode' + counter])
+                    console.log(window['newDeviceNode' + counter])
+                    counter++
+                }
+            })
+        }
+
+        class CamClass {
+
+            constructor(cameraMode) {
+                this.postUrl = "test_post.php"
+                this.photo = document.getElementById('photo')
+                this.canvas = document.getElementById("canvas")
+                this.status = document.getElementById("status")
+                this.videoScreen = document.getElementById("video")
+                this.dlBtn = document.getElementById("download-button")
+                this.takePhotoButton = document.getElementById("take-photo")
+                this.clearPhotoButton = document.getElementById("clear-photo")
+                this.listDevicesHere = document.getElementById("list-devices-here")
+
+                this.canvasContext = this.canvas.getContext('2d')
+
+                this.devices = undefined
+                this.base64data = undefined
+                this.devicesList = undefined
+                this.calculatedHeight = undefined
+                this.cameraSettings = undefined
+                this.predefinedVideoWidth = 100 // rename variable - should be image width
+
+                this.setPhotoListener = this.takePhotoButton.addEventListener(
+                    'click', e => this.takePhoto()
+                )
+
+                this.setClearPhotoListener = this.clearPhotoButton.addEventListener(
+                    'click', e => this.clearPhoto()
+                )
+
+                this.setVideoListener = this.videoScreen.addEventListener(
+                    'canplay', e => {
+                        this.canvas.setAttribute('width', 200)//this.videoScreen.videoWidth)
+                        this.canvas.setAttribute('height', 200)//this.videoScreen.videoHeight)
+                    }
+                )
+
+                // use a setter here
+                this.updatePreview = function (x) {
+                    this.photo.setAttribute('src', x)
+                    this.dlBtn.setAttribute('href', x)
+                }
+
+                this.takePhoto = function () {
+                    this.canvasContext
+                        .drawImage(this.videoScreen,
+                            0, 0,
+                            this.videoScreen.videoWidth,
+                            this.videoScreen.videoHeight,
+                            0, (200 - this.videoScreen.clientHeight) / 2,
+                            this.videoScreen.clientWidth,
+                            this.videoScreen.clientHeight)
+                    console.log('clientHeight:', this.videoScreen.clientHeight)
+                    console.log(`video height is ${this.videoScreen.videoHeight} video offset height is ${this.videoScreen.offsetHeight}`)
+                    this.base64data = this.canvas.toDataURL();
+                    this.updatePreview(this.base64data)
+                }
+
+                this.clearPhoto = function () {
+                    this.updatePreview(undefined)
+                }
+
+                this.sendRequest = function(){
+                    const hr = new XMLHttpRequest();
+                    hr.open("POST", url, true);
+                    hr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                    hr.onreadystatechange = function () {
+                        if (hr.readyState == 4 && hr.status == 200) {
+                            const return_data = hr.responseText;
+                            this.status.innerHTML = return_data;
+                            // console.log(`Post response is ${return_data}`)
+                        }
+                    }
+                    hr.send("imgCaptured=" + base64data); 
+                }
+
+                this.cameraMode = cameraMode ? cameraMode : 'user';
+                this.mediaConstraints = {
+                    video: { facingMode: this.cameraMode },
+                    audio: false,
+                }
+
+                this.state = {
+                    isImageCaptured: false,
+                }
+            }
+
+            async displayVideoInputs() {
+                const devices = await navigator.mediaDevices.enumerateDevices()
+                let counter = 1
+                devices.forEach(function (device) {
+                    if (device.kind === "videoinput") {
+                        window['newDeviceNode' + counter] = document.createElement("button")
+                        window['newDeviceNode' + counter].innerHTML = 'newDeviceNode' + counter
+                        document.getElementById("list-devices-here")
+                            .append(device.kind + " " + device.label, window['newDeviceNode' + counter])
+                        // console.log(window['newDeviceNode' + counter])
+                        counter++
+                    }
+                })
+            }
+
+            async getMedia() {
+                const media = await navigator.mediaDevices
+                    .getUserMedia(this.mediaConstraints)
+                const aTrack = media.getVideoTracks()[0]
+                this.cameraSettings = aTrack.getSettings()
+                console.log('capabilities',aTrack.getCapabilities().zoom)
+                console.log('constraints',aTrack.getConstraints())
+                console.log('settings:',this.cameraSettings)
+                this.videoScreen.srcObject = media
+                this.videoScreen.play()
+            }
+
+            async printCameraSettings() {
+                return await navigator.mediaDevices
+                    .getSupportedConstraints()
+
+            }
+
+        } // end of CamClass definition
+
+        function startup() {
+            let y = new CamClass('environment')
+            y.displayVideoInputs()
+            y.getMedia()
+            console.log(y.printCameraSettings())
+        }
+
+        window.addEventListener("load", startup);
+    </script>
+</head>
+
+<body>
+    <div id="list-devices-here">Available cameras (not yet set up for mobile): <br> </div>
+    <div class="camera">
+        <p id="camera-options"></p>
+        <p id="device-label"></p>
+        <video id="video">Video stream not available.</video>
+        <button id="take-photo">Take photo</button>
+        <button id="clear-photo">Clear photo</button>
+        <div id="status"></div>
+
+        <!-- for mobile - not implemented yet -->
+        <button id="switch-camera" disabled>Switch Camera</button>
+    </div>
+
+    <!-- canvas not displayed -->
+    <canvas id="canvas"></canvas>
+
+    <!-- display image in #photo -->
+    <div class="output">
+        <img id="photo" alt="Captured image." />
+    </div>
+    <div id="download-stage">
+        <a id="download-button" href="" download="capturedImage.png">Save Photo</a>
+    </div>
+</body>
+
+</html>
