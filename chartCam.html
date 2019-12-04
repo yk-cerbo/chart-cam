@@ -112,18 +112,24 @@
                     }
                 )
 
+                this.setStateOfDlBtn = function(){
+                    if (this.base64data) {
+                        this.dlBtn.removeAttribute("disabled")
+                    } else {
+                        this.dlBtn.setAttribute("disabled", true)                      
+                    }
+                    console.log(this.base64data)
+                }
+
                 this.setSaveButtonListener = this.dlBtn.addEventListener(
                     'click', e => this.sendRequest()
                 )
 
-                this.dlBtn = function () {
-
-                }
-
                 // use a setter here
                 this.updatePreview = function (x) {
                     this.photo.setAttribute('src', x)
-                    this.dlBtn.setAttribute('href', x)
+                    // this.dlBtn.setAttribute('href', x) 
+                    // if image is downloadable uncomment above line
                 }
 
                 this.takePhoto = function () {
@@ -138,11 +144,14 @@
                     console.log('clientHeight:', this.videoScreen.clientHeight)
                     console.log(`video height is ${this.videoScreen.videoHeight} video offset height is ${this.videoScreen.offsetHeight}`)
                     this.base64data = this.canvas.toDataURL();
+                    this.setStateOfDlBtn()
                     this.updatePreview(this.base64data)
                 }
 
                 this.clearPhoto = function () {
                     this.updatePreview(undefined)
+                    this.base64data = undefined
+                    this.setStateOfDlBtn()
                 }
 
                 this.sendRequest = function () {
@@ -152,11 +161,11 @@
                     hr.onreadystatechange = function () {
                         if (hr.readyState == 4 && hr.status == 200) {
                             const return_data = hr.responseText;
-                            this.status.innerHTML = return_data;
-                            // console.log(`Post response is ${return_data}`)
+                            // this.status.innerHTML = return_data;
+                            console.log(`Post response is ${return_data}`)
                         }
                     }
-                    hr.send("imgCaptured=" + base64data);
+                    hr.send("imgCaptured=" + this.base64data);
                 }
 
                 this.cameraMode = cameraMode ? cameraMode : 'user';
@@ -238,7 +247,8 @@
         <img id="photo" alt="Captured image." />
     </div>
     <div id="download-stage">
-        <a id="download-button" href="" download="capturedImage.png">Save Photo</a>
+        <!-- <a id="download-button" href="" download="capturedImage.png">Save Photo</a> -->
+        <button id="download-button" disabled>Save Photo</button>
     </div>
 </body>
 
