@@ -95,7 +95,7 @@
                 this.devicesList = undefined
                 this.calculatedHeight = undefined
                 this.cameraSettings = undefined
-                this.predefinedVideoWidth = 100 // rename variable - should be image width
+                this.predefinedVideoWidth = 100 // rename variable - crappy/misleading name
 
                 this.setPhotoListener = this.takePhotoButton.addEventListener(
                     'click', e => this.takePhoto()
@@ -107,10 +107,18 @@
 
                 this.setVideoListener = this.videoScreen.addEventListener(
                     'canplay', e => {
-                        this.canvas.setAttribute('width', 200)//this.videoScreen.videoWidth)
-                        this.canvas.setAttribute('height', 200)//this.videoScreen.videoHeight)
+                        this.canvas.setAttribute('width', 200)
+                        this.canvas.setAttribute('height', 200)
                     }
                 )
+
+                this.setSaveButtonListener = this.dlBtn.addEventListener(
+                    'click', e => this.sendRequest()
+                )
+
+                this.dlBtn = function () {
+
+                }
 
                 // use a setter here
                 this.updatePreview = function (x) {
@@ -137,9 +145,9 @@
                     this.updatePreview(undefined)
                 }
 
-                this.sendRequest = function(){
+                this.sendRequest = function () {
                     const hr = new XMLHttpRequest();
-                    hr.open("POST", url, true);
+                    hr.open("POST", this.postUrl, true);
                     hr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
                     hr.onreadystatechange = function () {
                         if (hr.readyState == 4 && hr.status == 200) {
@@ -148,7 +156,7 @@
                             // console.log(`Post response is ${return_data}`)
                         }
                     }
-                    hr.send("imgCaptured=" + base64data); 
+                    hr.send("imgCaptured=" + base64data);
                 }
 
                 this.cameraMode = cameraMode ? cameraMode : 'user';
@@ -182,9 +190,9 @@
                     .getUserMedia(this.mediaConstraints)
                 const aTrack = media.getVideoTracks()[0]
                 this.cameraSettings = aTrack.getSettings()
-                console.log('capabilities',aTrack.getCapabilities().zoom)
-                console.log('constraints',aTrack.getConstraints())
-                console.log('settings:',this.cameraSettings)
+                console.log('capabilities', aTrack.getCapabilities().zoom)
+                console.log('constraints', aTrack.getConstraints())
+                console.log('settings:', this.cameraSettings)
                 this.videoScreen.srcObject = media
                 this.videoScreen.play()
             }
