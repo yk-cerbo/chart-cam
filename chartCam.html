@@ -19,17 +19,19 @@
         }
 
         #video {
-            width: 200px;
+            max-width: 90%;
             object-fit: contain;
             transform: scaleX(1);
         }
 
         #photo {
-            border: 1px solid green;
+            display: flex;
+            max-width: 100%;
+            border: 0px solid green;
         }
 
         #canvas {
-            display: none;
+            display: block;
         }
 
         .camera {
@@ -38,6 +40,7 @@
             flex-direction: column;
             align-items: center;
             border: 1px solid black;
+            overflow: scroll;
         }
 
         #status {
@@ -45,18 +48,20 @@
             max-height: 200px;
         }
 
-        .output {
-            width: 75%;
+        #output {
+            max-width: 80%;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
-        #switch-camera {}
-
         #take-photo,
         #clear-photo {
             max-width: 200px;
+        }
+
+        #list-devices-here {
+            display: none;
         }
     </style>
     <script>
@@ -69,7 +74,7 @@
                     window['newDeviceNode' + counter].innerHTML = 'newDeviceNode' + counter
                     document.getElementById("list-devices-here")
                         .append(device.kind + " " + device.label, window['newDeviceNode' + counter])
-                    console.log(window['newDeviceNode' + counter])
+                    // console.log(window['newDeviceNode' + counter])
                     counter++
                 }
             })
@@ -80,12 +85,13 @@
             constructor(cameraMode) {
                 this.postUrl = "test_post.php"
                 this.photo = document.getElementById('photo')
+                this.output = document.getElementById('output')
                 this.canvas = document.getElementById("canvas")
                 this.status = document.getElementById("status")
                 this.videoScreen = document.getElementById("video")
                 this.dlBtn = document.getElementById("download-button")
                 this.takePhotoButton = document.getElementById("take-photo")
-                this.clearPhotoButton = document.getElementById("clear-photo")
+                // this.clearPhotoButton = document.getElementById("clear-photo")
                 this.listDevicesHere = document.getElementById("list-devices-here")
 
                 this.canvasContext = this.canvas.getContext('2d')
@@ -101,57 +107,73 @@
                     'click', e => this.takePhoto()
                 )
 
-                this.setClearPhotoListener = this.clearPhotoButton.addEventListener(
-                    'click', e => this.clearPhoto()
-                )
+                // BD: remove clear photo button
+                // this.setClearPhotoListener = this.clearPhotoButton.addEventListener(
+                //     'click', e => this.clearPhoto()
+                // )
 
                 this.setVideoListener = this.videoScreen.addEventListener(
                     'canplay', e => {
-                        this.canvas.setAttribute('width', 200)
-                        this.canvas.setAttribute('height', 200)
+                        const minDim = Math.min(this.videoScreen.clientWidth, this.videoScreen.clientHeight)
+                        this.canvas.setAttribute('width', minDim)
+                        this.canvas.setAttribute('height', minDim)
+                        console.log(`in setvideolistener scroll ${this.videoScreen.scrollWidth}`)
+                        console.log(`in setvideolistener videocw ${this.videoScreen.clientWidth}`)
+                        const scaleFactorX = 1//200 / this.videoScreen.videoWidth 
+                        const scaleFactorY = scaleFactorX
+                        //this.canvasContext.scale(scaleFactorX, scaleFactorX)
                     }
                 )
 
-                this.setStateOfDlBtn = function(){
+                this.setStateOfDlBtn = function () {
                     if (this.base64data) {
                         this.dlBtn.removeAttribute("disabled")
                     } else {
-                        this.dlBtn.setAttribute("disabled", true)                      
+                        this.dlBtn.setAttribute("disabled", true)
                     }
-                    console.log(this.base64data)
                 }
 
                 this.setSaveButtonListener = this.dlBtn.addEventListener(
-                    'click', e => this.sendRequest()
+                    'click', e => { this.downloadImage() }
                 )
 
-                // use a setter here
+                // use a setter here?
                 this.updatePreview = function (x) {
-                    this.photo.setAttribute('src', x)
-                    // this.dlBtn.setAttribute('href', x) 
-                    // if image is downloadable uncomment above line
+                    this.photo.setAttribute('src', this.canvas.toDataURL())
                 }
 
                 this.takePhoto = function () {
+                    // clean up function
+                    const minDim = Math.min(this.videoScreen.clientWidth, this.videoScreen.clientHeight)
+                    const maxDim = Math.max(this.videoScreen.clientWidth, this.videoScreen.clientHeight)
+                    const offSetX = (maxDim - minDim) / 2
                     this.canvasContext
                         .drawImage(this.videoScreen,
-                            0, 0,
-                            this.videoScreen.videoWidth,
-                            this.videoScreen.videoHeight,
-                            0, (200 - this.videoScreen.clientHeight) / 2,
-                            this.videoScreen.clientWidth,
-                            this.videoScreen.clientHeight)
+                            offSetX, 0,
+                            minDim,
+                            minDim,
+                            0, 0,//(200 - this.videoScreen.clientHeight) / 2,
+                            minDim,
+                            minDim)
+                    console.log(`videoscreen.videoheight ${this.videoScreen.videoHeight}`)
+                    this.dlBtn.setAttribute('href', this.canvas.toDataURL())
                     console.log('clientHeight:', this.videoScreen.clientHeight)
                     console.log(`video height is ${this.videoScreen.videoHeight} video offset height is ${this.videoScreen.offsetHeight}`)
                     this.base64data = this.canvas.toDataURL();
                     this.setStateOfDlBtn()
                     this.updatePreview(this.base64data)
+                    this.updateOutput()
                 }
 
                 this.clearPhoto = function () {
                     this.updatePreview(undefined)
                     this.base64data = undefined
                     this.setStateOfDlBtn()
+                }
+
+                this.updateOutput = function () {
+                    document.getElementById("output").style.display =
+                        this.base64data ? "flex" : "none"
                 }
 
                 this.sendRequest = function () {
@@ -162,7 +184,7 @@
                         if (hr.readyState == 4 && hr.status == 200) {
                             const return_data = hr.responseText;
                             // this.status.innerHTML = return_data;
-                            console.log(`Post response is ${return_data}`)
+                            // console.log(`Post response is ${return_data}`)
                         }
                     }
                     hr.send("imgCaptured=" + this.base64data);
@@ -199,10 +221,11 @@
                     .getUserMedia(this.mediaConstraints)
                 const aTrack = media.getVideoTracks()[0]
                 this.cameraSettings = aTrack.getSettings()
-                console.log('capabilities', aTrack.getCapabilities().zoom)
-                console.log('constraints', aTrack.getConstraints())
-                console.log('settings:', this.cameraSettings)
+                // console.log('capabilities', aTrack.getCapabilities().zoom)
+                // console.log('constraints', aTrack.getConstraints())
+                // console.log('settings:', this.cameraSettings)
                 this.videoScreen.srcObject = media
+
                 this.videoScreen.play()
             }
 
@@ -218,6 +241,7 @@
             let y = new CamClass('environment')
             y.displayVideoInputs()
             y.getMedia()
+            y.updateOutput()
             console.log(y.printCameraSettings())
         }
 
@@ -232,23 +256,24 @@
         <p id="device-label"></p>
         <video id="video">Video stream not available.</video>
         <button id="take-photo">Take photo</button>
-        <button id="clear-photo">Clear photo</button>
+        <!-- BD: remove clear photo button -->
+        <!-- <button id="clear-photo">Clear photo</button> -->
         <div id="status"></div>
 
         <!-- for mobile - not implemented yet -->
-        <button id="switch-camera" disabled>Switch Camera</button>
+        <!-- <button id="switch-camera" disabled>Switch Camera</button> -->
     </div>
 
     <!-- canvas not displayed -->
     <canvas id="canvas"></canvas>
 
     <!-- display image in #photo -->
-    <div class="output">
+    <div id="output">
         <img id="photo" alt="Captured image." />
-    </div>
-    <div id="download-stage">
-        <!-- <a id="download-button" href="" download="capturedImage.png">Save Photo</a> -->
-        <button id="download-button" disabled>Save Photo</button>
+        <div id="download-stage">
+            <!-- <a id="download-button" href="" download="capturedImage.png">Save Photo</a> -->
+            <a href="" download id="download-button" disabled>Save Photo</a>
+        </div>
     </div>
 </body>
 
