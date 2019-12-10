@@ -117,8 +117,6 @@
                         const minDim = Math.min(this.videoScreen.clientWidth, this.videoScreen.clientHeight)
                         this.canvas.setAttribute('width', minDim)
                         this.canvas.setAttribute('height', minDim)
-                        console.log(`in setvideolistener scroll ${this.videoScreen.scrollWidth}`)
-                        console.log(`in setvideolistener videocw ${this.videoScreen.clientWidth}`)
                         const scaleFactorX = 1//200 / this.videoScreen.videoWidth 
                         const scaleFactorY = scaleFactorX
                         //this.canvasContext.scale(scaleFactorX, scaleFactorX)
@@ -142,23 +140,27 @@
                     this.photo.setAttribute('src', this.canvas.toDataURL())
                 }
 
+                this.handleResize = function(){
+                    console.log(`${this.videoScreen}`)
+                }
+
                 this.takePhoto = function () {
-                    // clean up function
+                    // clean up function!!
                     const minDim = Math.min(this.videoScreen.clientWidth, this.videoScreen.clientHeight)
                     const maxDim = Math.max(this.videoScreen.clientWidth, this.videoScreen.clientHeight)
                     const offSetX = (maxDim - minDim) / 2
+                    console.log(`${this.videoScreen.clientWidth === this.videoScreen.videoWidth ?
+                        'equal' : 'not equal, vw = ' + this.videoScreen.videoWidth}`)
+                    // this.canvasContext.scale(this.videoScreen.clientWidth/this.videoScreen.videoWidth, this.videoScreen.clientWidth / this.videoScreen.videoWidth)
                     this.canvasContext
                         .drawImage(this.videoScreen,
                             offSetX, 0,
-                            minDim,
-                            minDim,
+                            this.videoScreen.videoWidth,
+                            this.videoScreen.videoWidth,
                             0, 0,//(200 - this.videoScreen.clientHeight) / 2,
-                            minDim,
-                            minDim)
-                    console.log(`videoscreen.videoheight ${this.videoScreen.videoHeight}`)
+                            this.videoScreen.clientWidth,
+                            this.videoScreen.clientWidth)
                     this.dlBtn.setAttribute('href', this.canvas.toDataURL())
-                    console.log('clientHeight:', this.videoScreen.clientHeight)
-                    console.log(`video height is ${this.videoScreen.videoHeight} video offset height is ${this.videoScreen.offsetHeight}`)
                     this.base64data = this.canvas.toDataURL();
                     this.setStateOfDlBtn()
                     this.updatePreview(this.base64data)
@@ -242,6 +244,7 @@
             y.displayVideoInputs()
             y.getMedia()
             y.updateOutput()
+            window.onresize = y.handleResize
             console.log(y.printCameraSettings())
         }
 
