@@ -18,9 +18,12 @@
             align-items: center;
         }
 
+        #video-wrapper {
+            overflow: hidden;
+        }
+
         #video {
-            max-width: 90%;
-            object-fit: contain;
+            /* object-fit: contain; */
             transform: scaleX(1);
         }
 
@@ -31,7 +34,7 @@
         }
 
         #canvas {
-            display: block;
+            display: none;
         }
 
         .camera {
@@ -74,7 +77,6 @@
                     window['newDeviceNode' + counter].innerHTML = 'newDeviceNode' + counter
                     document.getElementById("list-devices-here")
                         .append(device.kind + " " + device.label, window['newDeviceNode' + counter])
-                    // console.log(window['newDeviceNode' + counter])
                     counter++
                 }
             })
@@ -101,7 +103,8 @@
                 this.devicesList = undefined
                 this.calculatedHeight = undefined
                 this.cameraSettings = undefined
-                this.predefinedVideoWidth = 100 // rename variable - crappy/misleading name
+                this.shouldDisplayOutputStage = false // false at initialization
+                this.predefinedVideoWidth = 100 // rename variable - misleading name
 
                 this.setPhotoListener = this.takePhotoButton.addEventListener(
                     'click', e => this.takePhoto()
@@ -113,15 +116,24 @@
                 // )
 
                 this.setVideoListener = this.videoScreen.addEventListener(
-                    'canplay', e => {
+                    'play', e => {
+                        console.log('play')
                         const minDim = Math.min(this.videoScreen.clientWidth, this.videoScreen.clientHeight)
                         this.canvas.setAttribute('width', minDim)
                         this.canvas.setAttribute('height', minDim)
                         const scaleFactorX = 1//200 / this.videoScreen.videoWidth 
                         const scaleFactorY = scaleFactorX
                         //this.canvasContext.scale(scaleFactorX, scaleFactorX)
+                        var ctxt = document.getElementById("video-canvas").getContext("2d")
+                        this.draw(this.videoScreen, ctxt, 1000, 1000)
+
                     }
                 )
+
+                this.draw = function (v, ctxt, x, y) {
+                    ctxt.drawImage(v, 0, 0, x, y)
+                    setInterval(this.draw, 1/60 /*ms*/, v, ctxt, x, y)
+                }
 
                 this.setStateOfDlBtn = function () {
                     if (this.base64data) {
@@ -135,16 +147,33 @@
                     'click', e => { this.downloadImage() }
                 )
 
-                // use a setter here?
                 this.updatePreview = function (x) {
                     this.photo.setAttribute('src', this.canvas.toDataURL())
                 }
 
-                this.handleResize = function(){
+                // replacement for this.updatePreview
+                this.setDownloadSrc = function (x) {
+                    this.photo.setAttribute('src', this.canvas.toDataURL())
+                }
+
+                this.handleResize = function () {
                     console.log(`${this.videoScreen}`)
                 }
 
+                this.updateBase64 = function (data) {
+                    // data is an arg; expects this.canvas.toDataURL() or undefined (not enforced)
+                    // also update #output
+                    this.base64data = data
+                    this.setStateOfDlBtn()
+                }
+
+                this.clearOutput = function () {
+                    console.log("clearoutput")
+                    this.updateBase64(undefined)
+                }
+
                 this.takePhoto = function () {
+                    this.clearOutput()
                     // clean up function!!
                     const minDim = Math.min(this.videoScreen.clientWidth, this.videoScreen.clientHeight)
                     const maxDim = Math.max(this.videoScreen.clientWidth, this.videoScreen.clientHeight)
@@ -161,7 +190,7 @@
                             this.videoScreen.clientWidth,
                             this.videoScreen.clientWidth)
                     this.dlBtn.setAttribute('href', this.canvas.toDataURL())
-                    this.base64data = this.canvas.toDataURL();
+                    this.base64data = this.canvas.toDataURL()
                     this.setStateOfDlBtn()
                     this.updatePreview(this.base64data)
                     this.updateOutput()
@@ -175,7 +204,8 @@
 
                 this.updateOutput = function () {
                     document.getElementById("output").style.display =
-                        this.base64data ? "flex" : "none"
+                        this.shouldDisplayOutputStage ? "flex" : "none"
+                    this.shouldDisplayOutputStage = !this.shouldDisplayOutputStage
                 }
 
                 this.sendRequest = function () {
@@ -221,13 +251,16 @@
             async getMedia() {
                 const media = await navigator.mediaDevices
                     .getUserMedia(this.mediaConstraints)
+                console.log(media)
+                media.onaddtrack = (event) => {
+                    console.log(`New ${event.track.kind} track added`);
+                };
                 const aTrack = media.getVideoTracks()[0]
                 this.cameraSettings = aTrack.getSettings()
                 // console.log('capabilities', aTrack.getCapabilities().zoom)
                 // console.log('constraints', aTrack.getConstraints())
                 // console.log('settings:', this.cameraSettings)
                 this.videoScreen.srcObject = media
-
                 this.videoScreen.play()
             }
 
@@ -258,6 +291,7 @@
         <p id="camera-options"></p>
         <p id="device-label"></p>
         <video id="video">Video stream not available.</video>
+        <canvas id="video-canvas"></canvas>
         <button id="take-photo">Take photo</button>
         <!-- BD: remove clear photo button -->
         <!-- <button id="clear-photo">Clear photo</button> -->
